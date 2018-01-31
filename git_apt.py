@@ -8,16 +8,27 @@ import apt.debfile
 
 import sqlite3
 
-import packaging
+import packaging.version
 
 import requests
+
+import config
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("toll", choices=["update", "download", "upgrade", "add"], nargs=argparse.REMAINDER)
-    args = parser.parse_args(sys.argv[1:])
-    #print(args)
+    parser.add_argument('-s', required=False, action='store_true')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-u', "--update", nargs='*')
+    group.add_argument('-g', "--upgrade", nargs='*')
+    group.add_argument('-d', "--download", nargs='*')
+    group.add_argument('-a', "--add", nargs='*')
+    # parser.add_argument("toll", choices=["update", "download",
+    #                                      "upgrade", "add"],
+    #                     nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    print(vars(args))
+
 
 class databaseHandler():
 
@@ -42,6 +53,24 @@ class databaseHandler():
         """
         a = self.curs.execute(("SELECT * FROM repositories WHERE"
                                " {}= :v").format("\"" + column + "\""),
+                              {"v": value})
+        return a.fetchall()
+
+    def repositories_get_selected_by_value_in_column(self, selected,
+                                                     column, value):
+        """gets selected column where value is in column
+
+        I did this class before I realised I don't know it. Why do I leave it
+        in? I don't know
+
+        Params:
+            Selected
+            column
+            value
+        """
+        string = ','.join(map(str, selected))
+        a = self.curs.execute(("SELECT {} FROM repositories WHERE"
+                               " {}= :v").format(string, "\"" + column + "\""),
                               {"v": value})
         return a.fetchall()
 
@@ -85,8 +114,6 @@ class databaseHandler():
         self.commit()
         self.close()
 
-
-
     def commit(self):
         self.conn.commit()
 
@@ -96,6 +123,46 @@ class databaseHandler():
 
 class git_apt():
     pass
+
+
+class aptHandler():
+    pass
+
+    def __init__():
+        pass
+
+
+class git_api():
+    def __init__(self, db):
+        self.token = config.git_token
+        self.headers = {}
+        self.headers["Authorization"] = "token {}".format(self.token)
+        self.db = db
+        self.baseurl = "https://api.github.com/"
+        self.response_storage = {}
+
+    def _get_latest_release(self, git_url):
+        if not (git_url in self.response_storage.keys()):
+            response = requests.get(self.baseurl + "repos/" + git_url +
+                                    "/releases/latest", headers=self.headers)
+            self.response_storage[git_url] = response
+        else:
+            pass
+        return self.response_storage[git_url]
+
+    def get_latest_release_version(self, git_url):
+        res = self._get_latest_release(git_url)
+        ver = res.json()["tag_name"]
+        vers = packaging.version.Version(ver)
+        return vers
+
+    def get_latest_release_download(self, git_url):
+        res = self._get_latest_release(git_url)
+        resj = res.json()
+        downloadasset = [x for x in resj["assets"] if ".deb" in x["name"]][0]
+        return downloadasset["browser_download_url"]
+
+
 
 
 if __name__ == '__main__':
