@@ -8,6 +8,8 @@ import apt.debfile
 
 import sqlite3
 
+import re
+
 import packaging.version
 
 import requests
@@ -121,15 +123,29 @@ class databaseHandler():
         self.conn.close()
 
 
-class git_apt():
-    pass
+class git_apt_utilities():
+
+    @staticmethod
+    def get_filename_from_cd(cd):
+        if not cd:
+            return None
+        fname = re.findall('filename=(.+)', cd)
+        if len(fname) == 0:
+            return None
+        return fname[0]
 
 
 class aptHandler():
-    pass
 
-    def __init__():
-        pass
+    def __init__(self):
+        self.cache = apt.cache.Cache()
+
+    def _get_package(self, pkg):
+        return self.cache[pkg]
+
+    def get_package_version(self, pkg):
+        p = self._get_package(pkg)
+        return packaging.version.Version(p.installed.version)
 
 
 class git_api():
@@ -162,7 +178,16 @@ class git_api():
         downloadasset = [x for x in resj["assets"] if ".deb" in x["name"]][0]
         return downloadasset["browser_download_url"]
 
-
+    @staticmethod
+    def download_file(url, dest=None, filename=None):
+        r = requests.get(url, allow_redirects=True)
+        if filename is None:
+            filename = git_apt_utilities.get_filename_from_cd(
+                r.headers.get('content-disposition')
+            )
+        if dest is None:
+            dest = "downloads"
+        open(dest + "/" + filename, 'wb').write(r.content)
 
 
 if __name__ == '__main__':
