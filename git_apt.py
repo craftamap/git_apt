@@ -76,6 +76,15 @@ class databaseHandler():
                               {"v": value})
         return a.fetchall()
 
+    def full_repositories_get_selected(self, selected):
+        """
+        is this the real life? or is it fantasy?
+        Seriously, anyone who has to maintain this code should kill himself.
+        """
+        string = ','.join(map(str, selected))
+        a = self.curs.execute("SELECT {} FROM repositories".format(string))
+        return a.fetchall()
+
     def repositories_update_version_git(self, pkg, version):
         """ updates the git version.
 
@@ -188,6 +197,32 @@ class git_api():
         if dest is None:
             dest = "downloads"
         open(dest + "/" + filename, 'wb').write(r.content)
+
+
+class git_apt ():
+    def __init__(self):
+        self.db = databaseHandler()
+        self.git = git_api(self.db)
+
+    def update(self):
+        b = self._dblist()
+        self._check_git(b)
+
+    def _check_git(self, list1):
+        pass
+        for k in list1:
+            k["version-git"] = self.git.get_latest_release_version(
+                k["git-url"]
+            )
+        print list1
+
+    def _dblist(self):
+        requestlist = ["pkgname", "version-git", "version-cache",
+                       "git-url", "date"]
+        x = self.db.full_repositories_get_selected(
+            ["\"" + n + "\"" for n in requestlist]
+        )
+        return [dict(zip(requestlist, n)) for n in x]
 
 
 if __name__ == '__main__':
